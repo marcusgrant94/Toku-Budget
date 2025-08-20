@@ -6,27 +6,35 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
+import CloudKit
+import Charts   // keep if you use Charts in top-level views
+
+// Core Data-friendly enums
+enum TxKind: Int16 { case expense = 0, income = 1 }
+enum BillingCycle: Int16 { case monthly = 0, yearly = 1 }
+
+
+@MainActor
+func iCloudStatus() async -> CKAccountStatus {
+    (try? await CKContainer.default().accountStatus()) ?? .couldNotDetermine
+}
 
 @main
 struct Toku_BudgetApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    let persistence = PersistenceController.shared   // from Persistence.swift
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+            WindowGroup {
+                RootView() // or ContentView()
+                    .environment(\.managedObjectContext, persistence.container.viewContext)
+            }
+            .commands {
+                ImportExportCommands()   // ← adds File ▸ Import/Export menu items
+            }
         }
-        .modelContainer(sharedModelContainer)
     }
-}
+
+
+
+
